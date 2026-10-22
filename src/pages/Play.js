@@ -6,7 +6,7 @@ import MoneyLadder from "../components/MoneyLadder";
 import { TIME_PER_QUESTION } from "../data";
 import { calcPrize } from "../utils";
 
-const GameScreen = ({ questions, playerName }) => {
+const GameScreen = ({ questions, playerName, onComplete }) => {
   const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState("answering");
@@ -45,11 +45,18 @@ const GameScreen = ({ questions, playerName }) => {
         if (isCorrect) reason = "win";
         else if (selected === null) reason = "timeout";
         const correctCount = isCorrect ? index + 1 : index;
+        const prize = calcPrize(correctCount, reason);
+        onComplete({
+          name: playerName,
+          prize,
+          correctCount,
+          playedAt: new Date().toLocaleString("vi-VN"),
+        });
         navigate("/result", {
           replace: true,
           state: {
             name: playerName,
-            prize: calcPrize(correctCount, reason),
+            prize,
             correctCount,
             reason,
           },
@@ -57,7 +64,7 @@ const GameScreen = ({ questions, playerName }) => {
       }, 2000);
       return () => clearTimeout(id);
     }
-  }, [status, selected, index, q, total, navigate, playerName]);
+  }, [status, selected, index, q, total, navigate, playerName, onComplete]);
 
   const handleSelect = (i) => {
     if (status !== "answering") return;
@@ -93,11 +100,17 @@ const GameScreen = ({ questions, playerName }) => {
   );
 };
 
-const Play = ({ questions, loading, error, playerName }) => {
+const Play = ({ questions, loading, error, playerName, onComplete }) => {
   if (playerName.trim() === "") return <Navigate to="/" replace />;
   if (loading) return <p>Đang tải câu hỏi...</p>;
   if (error || questions.length === 0) return <p>Không tải được câu hỏi.</p>;
-  return <GameScreen questions={questions} playerName={playerName} />;
+  return (
+    <GameScreen
+      questions={questions}
+      playerName={playerName}
+      onComplete={onComplete}
+    />
+  );
 };
 
 export default Play;

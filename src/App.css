@@ -1,38 +1,143 @@
-.App {
-  text-align: center;
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #f5f5f7;
 }
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.navbar {
   display: flex;
-  flex-direction: column;
+  gap: 24px;
+  padding: 14px 24px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+}
+.nav-link {
+  text-decoration: none;
+  color: #333;
+}
+.nav-link.active {
+  color: red;
+  font-weight: bold;
+}
+.content {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.filters {
+  display: flex;
+  gap: 16px;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+th,
+td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+th {
+  background: #eee;
+}
+.option {
+  padding: 8px 12px;
+  margin: 6px 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+}
+.option.correct {
+  background: #4caf50;
+  color: #fff;
 }
 
-.App-link {
-  color: #61dafb;
+.play-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.play-main {
+  flex: 1;
+}
+.timer {
+  font-size: 20px;
+  font-weight: bold;
+}
+.timer.danger {
+  color: red;
+}
+.question-number {
+  color: #666;
+}
+.answers-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.answer-btn {
+  padding: 14px;
+  font-size: 16px;
+  text-align: left;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.answer-btn:disabled {
+  cursor: not-allowed;
+}
+.answer-btn.selected {
+  background: orange;
+  color: #fff;
+}
+.answer-btn.correct {
+  background: #4caf50;
+  color: #fff;
+}
+.answer-btn.wrong {
+  background: #e53935;
+  color: #fff;
+}
+.ladder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 200px;
+  background: #fff;
+  border: 1px solid #ddd;
+}
+.ladder-item {
+  padding: 4px 10px;
+  font-size: 14px;
+}
+.ladder-item.milestone {
+  font-weight: bold;
+}
+.ladder-item.active {
+  background: gold;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.lifelines {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+.answer-btn.hidden {
+  visibility: hidden;
+}
+.audience-chart {
+  margin-top: 16px;
+}
+.audience-bar {
+  background: #90caf9;
+  color: #000;
+  margin: 4px 0;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  white-space: nowrap;
 }

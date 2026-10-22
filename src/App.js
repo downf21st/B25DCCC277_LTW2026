@@ -15,11 +15,13 @@ const App = () => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [playerName, setPlayerName] = useState("");
+  const [history, setHistory] = useState([]);
 
   useEffect(() => {
     const controller = new AbortController();
     axios
-      .get("/data/questions.json", { signal: controller.signal })
+      .get("/data/question.json", { signal: controller.signal })
       .then((res) => {
         setQuestions(res.data);
         setLoading(false);
@@ -35,10 +37,37 @@ const App = () => {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="play" element={<Play />} />
+        <Route
+          index
+          element={
+            <Home
+              playerName={playerName}
+              setPlayerName={setPlayerName}
+              history={history}
+            />
+          }
+        />
+        <Route
+          path="play"
+          element={
+            <Play
+              questions={questions}
+              loading={loading}
+              error={error}
+              playerName={playerName}
+              onComplete={(result) =>
+                setHistory((items) => [{ ...result, id: Date.now() }, ...items])
+              }
+            />
+          }
+        />
         <Route path="result" element={<Result />} />
-        <Route path="history" element={<History />} />
+        <Route
+          path="history"
+          element={
+            <History history={history} onClear={() => setHistory([])} />
+          }
+        />
         <Route
           path="questions"
           element={
