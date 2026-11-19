@@ -24,7 +24,6 @@ import { useNotice } from "./context/NoticeContext";
 import { AddCourseForm } from "./components/AddCourseForm";
 import { GoalPlanner } from "./components/GoalPlanner";
 import CourseRow from "./components/CourseRow";
-const BUILD_TAG = "gp-4073";
 const columns = [
   { key: "code", label: "Mã môn" },
   { key: "name", label: "Tên môn" },
@@ -210,7 +209,7 @@ const App = () => {
       : "Sổ điểm";
   }, [courses.length, cumulative.gpa]);
   return (
-    <div className={`app-shell ${theme}`} data-build={BUILD_TAG}>
+    <div className={`app-shell ${theme}`}>
       <header className="page-header">
         <p className="eyebrow">SỔ THEO DÕI HỌC TẬP</p>
         <h1>Sổ điểm sinh viên</h1>
@@ -359,3 +358,5 @@ const Stat = ({ label, value }) => (
   </div>
 );
 export default App;
+
+
