@@ -1,1 +1,1 @@
-# Trò chơi “Ai là triệu phú – phiên bản Lập trình Web”
+#  Sổ điểm sinh viên
