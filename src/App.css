@@ -268,3 +268,32 @@ td input[type="number"] {
     flex-direction: column;
   }
 }
+.app-shell.light { --ink: #18212c; --canvas: #ffffff; --paper: #ffffff; }
+.app-shell.dark { --ink: #e8eaf0; --canvas: #1f2430; --paper: #292f3d; --line: #3b4352; --muted: #aeb7c7; --shadow: none; }
+.app-shell.dark .stat-card, .app-shell.dark input, .app-shell.dark select, .app-shell.dark .empty-state { background: #343b4b; color: #e8eaf0; border-color: #485164; }
+.app-shell.dark td, .app-shell.dark th { border-color: #3b4352; }
+.theme-button { background: var(--green); border: 0; border-radius: 8px; color: #fff; cursor: pointer; margin-top: 15px; padding: 9px 14px; }
+.app-notice { background: #176b4b; border-radius: 9px; color: white; left: 50%; padding: 12px 18px; position: fixed; top: 16px; transform: translateX(-50%); z-index: 5; }
+.goal-fields { display: grid; gap: 14px; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.goal-fields label { color: var(--muted); display: grid; font-size: 13px; gap: 7px; }
+.goal-result { background: var(--green-soft); border-radius: 10px; color: var(--green); margin: 16px 0 0; padding: 14px; }
+.app-shell.dark .goal-result { background: #33483f; color: #c4ead5; }
+
+/* Apply the selected palette to the full page, not only the cards. */
+.app-shell {
+  background: var(--canvas);
+  color: var(--ink);
+  min-height: 100vh;
+}
+.app-shell.dark td {
+  color: var(--ink);
+}
+.app-shell.dark .failed-course td {
+  color: var(--red);
+}
+.app-shell.dark .stat-card span,
+.app-shell.dark th,
+.app-shell.dark .semester-filter,
+.app-shell.dark .form-field label {
+  color: var(--muted);
+}
