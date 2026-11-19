@@ -1,45 +1,214 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import "./App.css";
-import { SEMESTERS, formatPoint } from "./data";
-import { calcStats, getGrade } from "./utils";
+import { GRADES, SEMESTERS } from "./data";
+import { getGrade } from "./utils";
 import { useFetch } from "./hooks/useFetch";
+import { useDebounce } from "./hooks/useDebounce";
 import {
   selectCourses,
   setCourses,
   setScore,
   removeCourse,
+  restoreCourse,
 } from "./features/coursesSlice";
+import {
+  selectCumulativeStats,
+  selectSemesterCourses,
+  selectSemesterStats,
+} from "./features/selectors";
+import { rememberDeleted, clearUndo } from "./features/undoSlice";
+import { hasSaved } from "./store";
 import { useTheme } from "./context/ThemeContext";
 import { useNotice } from "./context/NoticeContext";
 import { AddCourseForm } from "./components/AddCourseForm";
 import { GoalPlanner } from "./components/GoalPlanner";
+import CourseRow from "./components/CourseRow";
 const BUILD_TAG = "gp-4073";
-
+const columns = [
+  { key: "code", label: "Mã môn" },
+  { key: "name", label: "Tên môn" },
+  { key: "credits", label: "Tín chỉ" },
+  { key: "semester", label: "Học kỳ" },
+  { key: "score", label: "Điểm (hệ 10)" },
+  { key: "letter", label: "Điểm chữ" },
+  { key: "point", label: "Điểm (hệ 4)" },
+];
 const App = () => {
-  const { data, loading, error } = useFetch("/data/courses.json");
-  const courses = useSelector(selectCourses);
-  const dispatch = useDispatch();
-  const { theme, toggleTheme } = useTheme();
-  const showNotice = useNotice();
-  const [semester, setSemester] = useState("all");
-
+  const { data, loading, error } = useFetch("/data/courses.json"),
+    courses = useSelector(selectCourses),
+    deleted = useSelector((s) => s.undo),
+    dispatch = useDispatch();
+  const { theme, toggleTheme } = useTheme(),
+    showNotice = useNotice();
+  const [semester, setSemester] = useState(() => {
+      try {
+        return localStorage.getItem("ltw_sodiem_semester") || "all";
+      } catch {
+        return "all";
+      }
+    }),
+    [search, setSearch] = useState(""),
+    [sort, setSort] = useState({ key: "", direction: 1 });
+  const debouncedSearch = useDebounce(search, 300),
+    searchRef = useRef(null);
   useEffect(() => {
-    if (data) dispatch(setCourses(data));
+    try {
+      localStorage.setItem("ltw_sodiem_semester", semester);
+    } catch {}
+  }, [semester]);
+  useEffect(() => {
+    if (data && !hasSaved) dispatch(setCourses(data));
   }, [data, dispatch]);
-  const visibleCourses = useMemo(
+  useEffect(() => {
+    const handleKey = (e) => {
+      const t = e.target,
+        typing = t.matches("input,select,textarea") || t.isContentEditable;
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (e.key === "Escape" && t === searchRef.current) setSearch("");
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+  const semesterCourses = useSelector((state) =>
+    selectSemesterCourses(state, semester),
+  );
+  const visibleCourses = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    let list = semesterCourses.filter(
+      (c) =>
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q),
+    );
+    if (sort.key) {
+      list = [...list].sort((a, b) => {
+        const av =
+            sort.key === "letter"
+              ? getGrade(a.score).letter
+              : sort.key === "point"
+                ? getGrade(a.score).point
+                : a[sort.key],
+          bv =
+            sort.key === "letter"
+              ? getGrade(b.score).letter
+              : sort.key === "point"
+                ? getGrade(b.score).point
+                : b[sort.key];
+        const cmp =
+          typeof av === "number"
+            ? av - bv
+            : String(av).localeCompare(String(bv), "vi");
+        return cmp * sort.direction;
+      });
+    }
+    return list;
+  }, [semesterCourses, debouncedSearch, sort]);
+  const stats = useSelector((state) => selectSemesterStats(state, semester)),
+    cumulative = useSelector(selectCumulativeStats);
+  const gradeCounts = useMemo(
     () =>
-      semester === "all"
-        ? courses
-        : courses.filter((course) => course.semester === semester),
-    [courses, semester],
+      GRADES.map((g) => ({
+        ...g,
+        count: semesterCourses.filter(
+          (c) => getGrade(c.score).letter === g.letter,
+        ).length,
+      })),
+    [semesterCourses],
   );
-  const visibleStats = useMemo(
-    () => calcStats(visibleCourses),
-    [visibleCourses],
+  const handleScore = useCallback(
+    (id, score) => dispatch(setScore({ id, score })),
+    [dispatch],
   );
-  const cumulativeStats = useMemo(() => calcStats(courses), [courses]);
-
+  const handleRemove = useCallback(
+    (course) => {
+      dispatch(rememberDeleted(course));
+      dispatch(removeCourse(course.id));
+      showNotice(`Đã xóa môn ${course.name}`);
+    },
+    [dispatch, showNotice],
+  );
+  const handleUndo = useCallback(() => {
+    if (!deleted) return;
+    dispatch(restoreCourse(deleted));
+    dispatch(clearUndo());
+    showNotice(`Đã hoàn tác xóa môn ${deleted.name}`);
+  }, [deleted, dispatch, showNotice]);
+  const handleCourseShift = (e) => setSearch(e.target.value);
+  const sortBy = (key) =>
+    setSort((current) => ({
+      key,
+      direction: current.key === key ? -current.direction : 1,
+    }));
+  const exportCsv = () => {
+    const exportedAt = new Intl.DateTimeFormat("vi-VN", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date());
+    const rows = [
+      ["SỔ ĐIỂM SINH VIÊN"],
+      ["Ngày xuất", exportedAt],
+      ["Học kỳ", semester === "all" ? "Tất cả học kỳ" : semester],
+      ["Từ khóa tìm kiếm", debouncedSearch.trim() || "Không có"],
+      [],
+      ["TÓM TẮT"],
+      ["Số môn trong bảng", visibleCourses.length],
+      ["Tổng tín chỉ học kỳ đang xem", stats.credits],
+      ["GPA học kỳ đang xem", stats.gpa.toFixed(2)],
+      ["Xếp loại học kỳ đang xem", stats.rank],
+      ["GPA tích lũy", cumulative.gpa.toFixed(2)],
+      [],
+      ["PHÂN BỐ ĐIỂM CHỮ"],
+      ["Điểm chữ", "Số môn"],
+      ...gradeCounts.map((grade) => [grade.letter, grade.count]),
+      [],
+      ["BẢNG ĐIỂM"],
+      [
+        "Mã môn",
+        "Tên môn",
+        "Tín chỉ",
+        "Học kỳ",
+        "Điểm hệ 10",
+        "Điểm chữ",
+        "Điểm hệ 4",
+      ],
+      ...visibleCourses.map((course) => [
+        course.code,
+        course.name,
+        course.credits,
+        course.semester,
+        course.score,
+        getGrade(course.score).letter,
+        getGrade(course.score).point.toFixed(1),
+      ]),
+    ];
+    const escapeCell = (value) => {
+      const text = String(value ?? "");
+      const safeText =
+        typeof value === "string" && /^[=+@\\-\\t\\r]/.test(text)
+          ? `'${text}`
+          : text;
+      return `"${safeText.replaceAll('"', '""')}"`;
+    };
+    const csv =
+      "\uFEFF" + rows.map((row) => row.map(escapeCell).join(",")).join("\r\n");
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "so-diem.csv";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  useEffect(() => {
+    document.title = courses.length
+      ? `GPA ${cumulative.gpa.toFixed(2)} – Sổ điểm`
+      : "Sổ điểm";
+  }, [courses.length, cumulative.gpa]);
   return (
     <div className={`app-shell ${theme}`} data-build={BUILD_TAG}>
       <header className="page-header">
@@ -49,12 +218,12 @@ const App = () => {
           {theme === "light" ? "Chế độ tối" : "Chế độ sáng"}
         </button>
       </header>
-      {loading && (
+      {loading && !hasSaved && (
         <p className="notice" role="status">
           Đang tải bảng điểm...
         </p>
       )}
-      {error && courses.length === 0 && (
+      {error && !hasSaved && !courses.length && (
         <p className="notice error-notice" role="alert">
           Không tải được bảng điểm.
         </p>
@@ -68,12 +237,23 @@ const App = () => {
             </div>
           </div>
           <div className="stats-grid">
-            <Stat label="Số môn" value={visibleStats.count} />
-            <Stat label="Tổng tín chỉ" value={visibleStats.credits} />
-            <Stat label="GPA (hệ 4)" value={visibleStats.gpa.toFixed(2)} />
-            <Stat label="Xếp loại" value={visibleStats.rank} />
-            <Stat label="GPA tích lũy" value={cumulativeStats.gpa.toFixed(2)} />
+            <Stat label="Số môn" value={stats.count} />
+            <Stat label="Tổng tín chỉ" value={stats.credits} />
+            <Stat label="GPA (hệ 4)" value={stats.gpa.toFixed(2)} />
+            <Stat label="Xếp loại" value={stats.rank} />
+            <Stat label="GPA tích lũy" value={cumulative.gpa.toFixed(2)} />
           </div>
+          <h3 className="distribution-title">Phân bố điểm chữ</h3>
+          <ul className="grade-distribution">
+            {gradeCounts.map((g) => (
+              <li key={g.letter}>
+                <span>
+                  {g.letter}: {g.count}
+                </span>
+                <span className="grade-bar" style={{ width: g.count * 24 }} />
+              </li>
+            ))}
+          </ul>
         </section>
         <section className="panel">
           <div className="section-heading course-heading">
@@ -95,6 +275,37 @@ const App = () => {
               </select>
             </label>
           </div>
+          <div className="search-row">
+            <label htmlFor="course-search">Tìm môn học</label>
+            <input
+              id="course-search"
+              ref={searchRef}
+              value={search}
+              onChange={handleCourseShift}
+              placeholder="Nhập tên hoặc mã môn"
+            />
+            <span>Tìm thấy {visibleCourses.length} môn</span>
+          </div>
+          <div className="challenge-actions">
+            <button
+              className="reset-button"
+              disabled={!data}
+              onClick={() => {
+                dispatch(setCourses(data));
+                showNotice("Đã đặt lại dữ liệu mẫu");
+              }}
+            >
+              Đặt lại dữ liệu mẫu
+            </button>
+            <button className="reset-button" onClick={exportCsv}>
+              Xuất CSV
+            </button>
+            {deleted && (
+              <button className="reset-button" onClick={handleUndo}>
+                Hoàn tác xóa {deleted.name}
+              </button>
+            )}
+          </div>
           {visibleCourses.length === 0 ? (
             <p className="empty-state">Chưa có môn học nào</p>
           ) : (
@@ -102,61 +313,34 @@ const App = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Mã môn</th>
-                    <th>Tên môn</th>
-                    <th>Tín chỉ</th>
-                    <th>Học kỳ</th>
-                    <th>Điểm (hệ 10)</th>
-                    <th>Điểm chữ</th>
-                    <th>Điểm (hệ 4)</th>
+                    {columns.map((col) => (
+                      <th key={col.key}>
+                        <button
+                          className="sort-button"
+                          onClick={() => sortBy(col.key)}
+                        >
+                          {col.label}
+                          {sort.key === col.key
+                            ? sort.direction === 1
+                              ? " ↑"
+                              : " ↓"
+                            : ""}
+                        </button>
+                      </th>
+                    ))}
+                    <th>Số lần render</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleCourses.map((course) => {
-                    const grade = getGrade(course.score),
-                      failed = grade.letter === "F";
-                    return (
-                      <tr
-                        key={course.id}
-                        className={failed ? "failed-course" : ""}
-                      >
-                        <td>{course.code}</td>
-                        <td className="course-name">{course.name}</td>
-                        <td>{course.credits}</td>
-                        <td>{course.semester}</td>
-                        <td>
-                          <input
-                            aria-label={`Điểm ${course.name}`}
-                            type="number"
-                            min="0"
-                            max="10"
-                            step="0.1"
-                            value={course.score}
-                            onChange={(e) => {
-                              const score = e.currentTarget.valueAsNumber;
-                              if (score >= 0 && score <= 10)
-                                dispatch(setScore({ id: course.id, score }));
-                            }}
-                          />
-                        </td>
-                        <td>{failed ? "F – Học lại" : grade.letter}</td>
-                        <td>{formatPoint(grade.point)}</td>
-                        <td>
-                          <button
-                            className="delete-button"
-                            aria-label={`Xóa ${course.name}`}
-                            onClick={() => {
-                              dispatch(removeCourse(course.id));
-                              showNotice(`Đã xóa môn ${course.name}`);
-                            }}
-                          >
-                            Xóa
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {visibleCourses.map((course) => (
+                    <CourseRow
+                      key={course.id}
+                      course={course}
+                      onScore={handleScore}
+                      onRemove={handleRemove}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -174,5 +358,4 @@ const Stat = ({ label, value }) => (
     <strong>{value}</strong>
   </div>
 );
-
 export default App;
