@@ -1,10 +1,24 @@
-export const PRIZES = [
-  200000, 400000, 600000, 1000000, 2000000, 3000000, 6000000, 10000000,
-  14000000, 22000000, 30000000, 40000000, 80000000, 150000000, 250000000,
+export const SEMESTERS = ["Học kỳ 1", "Học kỳ 2", "Học kỳ 3"];
+export const CREDIT_OPTIONS = [1, 2, 3, 4];
+
+export const GRADES = [
+  { min: 9.0, letter: "A+", point: 4.0 },
+  { min: 8.5, letter: "A", point: 3.7 },
+  { min: 8.0, letter: "B+", point: 3.5 },
+  { min: 7.0, letter: "B", point: 3.0 },
+  { min: 6.5, letter: "C+", point: 2.5 },
+  { min: 5.5, letter: "C", point: 2.0 },
+  { min: 5.0, letter: "D+", point: 1.5 },
+  { min: 4.0, letter: "D", point: 1.0 },
+  { min: 0, letter: "F", point: 0 },
 ];
-// Câu số 5, 10, 15 là các mốc an toàn
-export const MILESTONES = [5, 10, 15];
-export const LEVELS = { 1: "Dễ", 2: "Trung bình", 3: "Khó" };
-export const LETTERS = ["A", "B", "C", "D"];
-export const TIME_PER_QUESTION = 30;
-export const formatMoney = (n) => `${n.toLocaleString("vi-VN")} đ`;
+
+export const RANKS = [
+  { min: 3.6, title: "Xuất sắc" },
+  { min: 3.2, title: "Giỏi" },
+  { min: 2.5, title: "Khá" },
+  { min: 2.0, title: "Trung bình" },
+  { min: 0, title: "Yếu" },
+];
+
+export const formatPoint = (point) => point.toFixed(1);
